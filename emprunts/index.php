@@ -1,203 +1,92 @@
 <?php
-include("../config/db.php");
+require_once "../config/auth.php"; // protection
+require_once "../config/db.php";
+include("../templates/header.php");
 
-// Récupérer tous les étudiants
-$etudiants = $pdo->query("SELECT * FROM Etudiant")->fetchAll();
+// Récupération des emprunts en cours
+$sql = "
+SELECT 
+    em.CodeEtudiant,
+    em.CodeLivre,
+    e.Nom,
+    e.Prenom,
+    l.Titre,
+    em.DateEmprunt
+FROM Emprunter em
+JOIN Etudiant e ON em.CodeEtudiant = e.CodeEtudiant
+JOIN Livre l ON em.CodeLivre = l.CodeLivre
+ORDER BY em.DateEmprunt DESC
+";
+
+$emprunts = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 ?>
-
-<?php
-// Récupérer les livres qui ne sont pas empruntés
-$livres = $pdo->query("
-    SELECT * FROM Livre
-    WHERE CodeLivre NOT IN (
-        SELECT CodeLivre FROM Emprunter
-    )
-")->fetchAll();
-?>
-
-<?php
-// Si on clique sur le bouton Retourner
-if (isset($_POST['retourner'])) {
-
-    $codeEtudiant = $_POST['codeEtudiant'];
-    $codeLivre = $_POST['codeLivre'];
-
-    // Supprimer l'emprunt
-    $stmt = $pdo->prepare("
-        DELETE FROM Emprunter
-        WHERE CodeEtudiant = ? AND CodeLivre = ?
-    ");
-
-    $stmt->execute([$codeEtudiant, $codeLivre]);
-
-    // Recharger la page
-    header("Location: index.php");
-    exit;
-}
-?>
-
-
-<?php
-$emprunts = $pdo->query("
-    SELECT 
-        Etudiant.CodeEtudiant,
-        Livre.CodeLivre,
-        Etudiant.Nom AS etudiant,
-        Livre.Titre AS livre,
-        Emprunter.DateEmprunt
-    FROM Emprunter
-    JOIN Etudiant ON Etudiant.CodeEtudiant = Emprunter.CodeEtudiant
-    JOIN Livre ON Livre.CodeLivre = Emprunter.CodeLivre
-")->fetchAll();
-?>
-
-
-
-
-
-<?php
-include("../config/db.php");
-
-// Si on a cliqué sur le bouton Emprunter
-if (isset($_POST['emprunter'])) {
-
-    // Récupérer les valeurs du formulaire
-    $codeEtudiant = $_POST['etudiant'];
-    $codeLivre = $_POST['livre'];
-
-    // Date du jour
-    $date = date("Y-m-d");
-
-    // Insérer l'emprunt dans la table Emprunter
-    $stmt = $pdo->prepare("
-        INSERT INTO Emprunter (CodeEtudiant, CodeLivre, DateEmprunt)
-        VALUES (?, ?, ?)
-    ");
-
-    $stmt->execute([$codeEtudiant, $codeLivre, $date]);
-
-    // Recharger la page pour voir les changements
-    header("Location: index.php");
-    exit;
-}
-
-// Récupérer étudiants et livres (comme avant)
-$etudiants = $pdo->query("SELECT * FROM Etudiant")->fetchAll();
-
-$livres = $pdo->query("
-    SELECT * FROM Livre
-    WHERE CodeLivre NOT IN (
-        SELECT CodeLivre FROM Emprunter
-    )
-")->fetchAll();
-?>
-
-
-
-
-<!DOCTYPE html>
-<html>
-<head>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <title>Gestion des emprunts</title>
-</head>
-<body class="bg-light">
 
 <div class="container mt-5">
 
-    <h1 class="text-center mb-4">📚 Gestion des emprunts</h1>
+    <div class="card shadow-lg border-0 rounded-4">
 
-    <!-- FORMULAIRE -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            Nouvel emprunt
+        <!-- En-tête -->
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center rounded-top-4">
+            <h4 class="mb-0">📚 Livres en cours d’emprunt</h4>
+            <a href="add.php" class="btn btn-light fw-bold">
+                ➕ Nouvel emprunt
+            </a>
         </div>
+
+        <!-- Contenu -->
         <div class="card-body">
 
+            <?php if (count($emprunts) > 0): ?>
 
-        <form method="POST" class="row g-3">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle text-center">
 
-<div class="col-md-6">
-    <label class="form-label">Étudiant</label>
-    <select name="etudiant" class="form-select" required>
-        <option value="">-- Choisir un étudiant --</option>
-        <?php foreach ($etudiants as $e): ?>
-            <option value="<?php echo $e['CodeEtudiant']; ?>">
-                <?php echo $e['Nom']; ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</div>
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Étudiant</th>
+                            <th>Livre</th>
+                            <th>Date d’emprunt</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
 
-<div class="col-md-6">
-    <label class="form-label">Livre</label>
-    <select name="livre" class="form-select" required>
-        <option value="">-- Choisir un livre --</option>
-        <?php foreach ($livres as $l): ?>
-            <option value="<?php echo $l['CodeLivre']; ?>">
-                <?php echo $l['Titre']; ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</div>
+                    <tbody>
+                        <?php foreach ($emprunts as $em): ?>
+                        <tr>
+                            <td class="fw-semibold">
+                                <?= htmlspecialchars($em["Nom"] . " " . $em["Prenom"]) ?>
+                            </td>
 
-<div class="col-12">
-    <button type="submit" name="emprunter" class="btn btn-success mt-3">
-        Emprunter
-    </button>
-</div>
-</form>
-</div>
-    </div>
+                            <td>
+                                <?= htmlspecialchars($em["Titre"]) ?>
+                            </td>
 
+                            <td>
+                                <?= date("d/m/Y", strtotime($em["DateEmprunt"])) ?>
+                            </td>
 
-<h2>Emprunts en cours</h2>
+                            <td>
+                                <a href="delete.php?e=<?= $em['CodeEtudiant'] ?>&l=<?= $em['CodeLivre'] ?>"
+                                   class="btn btn-danger btn-sm"
+                                   onclick="return confirm('Confirmer le retour du livre ?')">
+                                    🔄 Retourner
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
 
-<div class="card">
-    <div class="card-header bg-dark text-white">
-        Emprunts en cours
-    </div>
+                </table>
+            </div>
 
-    <div class="card-body">
-        <table class="table table-striped table-bordered">
-            <thead class="table-secondary">
-                <tr>
-                    <th>Étudiant</th>
-                    <th>Livre</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
+            <?php else: ?>
+                <div class="alert alert-info text-center">
+                    Aucun livre n’est actuellement emprunté 📭
+                </div>
+            <?php endif; ?>
 
-            <?php foreach ($emprunts as $emp): ?>
-                <tr>
-                    <td><?php echo $emp['etudiant']; ?></td>
-                    <td><?php echo $emp['livre']; ?></td>
-                    <td><?php echo $emp['DateEmprunt']; ?></td>
-                    <td>
-                        <form method="POST">
-                            <input type="hidden" name="codeEtudiant" value="<?php echo $emp['CodeEtudiant']; ?>">
-                            <input type="hidden" name="codeLivre" value="<?php echo $emp['CodeLivre']; ?>">
-                            <button type="submit" name="retourner" class="btn btn-danger btn-sm">
-                                Retourner
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-
-            </tbody>
-        </table>
+        </div>
     </div>
 </div>
 
-</div> <!-- fin container -->
-</body>
-</html>
-
-
-
-</body>
-</html>
-
+<?php include("../templates/footer.php"); ?>
