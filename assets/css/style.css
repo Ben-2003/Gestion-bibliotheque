@@ -1,0 +1,34 @@
+body {
+    background-color: #0f5ccf;
+    font-family: 'Times New Roman', Times, serif;
+    size: 'solid';
+    
+}
+
+/* Titres */
+h2 {
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+/* Cartes */
+.card {
+    border-radius: 15px;
+}
+
+/* Boutons */
+.btn {
+    border-radius: 20px;
+}
+
+/* Tableau */
+.table {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Navbar */
+.navbar {
+    box-shadow: 0 2px 8px rgba(221, 21, 21, 0.1);
+}
